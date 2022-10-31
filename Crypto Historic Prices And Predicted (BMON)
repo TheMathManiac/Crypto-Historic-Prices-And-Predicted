@@ -1,0 +1,173 @@
+import requests
+import json
+import pandas as pd
+from datetime import datetime
+from matplotlib import pyplot as plt
+import dateutil.parser
+import numpy as np
+import math
+import numpy as np
+from sklearn.preprocessing import MinMaxScaler
+from keras.models import Sequential
+from keras.layers import Dense, LSTM
+
+####################################################################################################################################################################
+
+def GetTokenDataFrame(url):
+
+
+    payload={}
+    headers = {}
+
+    response = requests.get(url, headers=headers, data=payload)
+    data = response.json()
+    
+    Price_list = []
+    Volume_list = []
+    MarketCap_list = []
+    Time_list = []
+
+    for info in data['data']['quotes']:    
+        openprice = info['quote']['open']
+        volume = int(info['quote']['volume'])
+        marketcap = int(info['quote']['marketCap'])
+        time = datetime.strptime(info['quote']['timestamp'], '%Y-%m-%dT%H:%M:%S.%f%z').replace(microsecond=0).isoformat(' ')[:10]
+
+    
+        Price_list.append(openprice)
+        Volume_list.append(volume)
+        MarketCap_list.append(marketcap)
+        Time_list.append(time)
+    
+    
+    BMON_time_data_frame = pd.DataFrame(Time_list)
+    BMON_time_data_frame.columns = ['Time']
+    BMON_time_data_frame.reset_index(drop=True, inplace=True)    
+    
+    BMON_price_data_frame = pd.DataFrame(Price_list)
+    BMON_price_data_frame.columns = ['Price']
+    BMON_price_data_frame.reset_index(drop=True, inplace=True)
+
+    BMON_volume_data_frame = pd.DataFrame(Volume_list)
+    BMON_volume_data_frame.columns = ['Volume']
+    BMON_volume_data_frame.reset_index(drop=True, inplace=True)
+
+    BMON_marketcap_data_frame = pd.DataFrame(MarketCap_list)
+    BMON_marketcap_data_frame.columns = ['marketcap']
+    BMON_marketcap_data_frame.reset_index(drop=True, inplace=True)
+
+    BMON_merge = pd.concat([BMON_time_data_frame, BMON_price_data_frame, BMON_volume_data_frame,BMON_marketcap_data_frame], axis=1, ignore_index=True)
+    BMON_merge.columns =['Time', 'Price', 'Volume', 'MarketCap']
+
+    #print(BMON_merge)
+    BMON_merge.to_csv('BMON_merge_data')
+
+
+    '''plt.plot(Time_list, Price_list)
+    plt.show()
+    plt.plot(Volume_list)
+    plt.plot(MarketCap_list)
+    plt.xticks(np.arange(0, 100, step = 20))
+    plt.xlabel('Time')
+    plt.yticks([])
+    #plt.ylabel('BMON Token Price')
+    plt.show()'''
+
+    '''plt.plot(Time_list, Volume_list)
+    plt.xticks(np.arange(0, 100, step = 20))
+    plt.xlabel('Time')
+    plt.ylabel('BMON Volume')
+    plt.show()
+    
+    plt.plot(Time_list, MarketCap_list)
+    plt.xticks(np.arange(0, 100, step = 20))
+    plt.xlabel('Time')
+    plt.ylabel('BMON MarketCap')
+    plt.show()   '''
+
+    MachineLearningLSTM(BMON_merge)
+    #MachineLearningRNN(BMON_merge)
+
+def MachineLearningLSTM(BMON_merge):
+
+    BMON_price_new = pd.DataFrame(BMON_merge.loc[:, ['Price']])
+    BMON_data = BMON_price_new.filter(['Price'])
+    BMON_data_final = BMON_data[:-1]
+    BMON_dataset = BMON_data_final.values
+    print(BMON_dataset)
+   
+    training_data_length = math.ceil(len(BMON_dataset))
+    print(training_data_length)
+
+    scaler = MinMaxScaler(feature_range = (0, 1))
+    scaled_data = scaler.fit_transform(BMON_dataset)
+    print(scaled_data)
+
+    training_data = scaled_data[0:training_data_length, :]
+    x_train = []
+    y_train = []
+
+    for i in range(2, len(training_data)):
+        x_train.append(training_data[i-2:i, 0])
+        y_train.append(training_data[i, 0])
+
+
+
+    x_train, y_train = np.array(x_train), np.array(y_train)
+    x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
+   
+    print(x_train.shape)
+
+    model = Sequential()
+    model.add(LSTM(50, return_sequences=True, input_shape = (x_train.shape[1], 1)))
+    model.add(LSTM(60, return_sequences=False))
+    model.add(Dense(25))
+    model.add(Dense(1))
+    model.compile(optimizer='adam', loss='mean_squared_error')
+    model.fit(x_train, y_train, batch_size=1, epochs=1)
+
+    '''test data'''
+    test_data = scaled_data[0:training_data_length: , :]
+    x_test = []
+    y_test = []
+
+    for i in range(2, len(test_data)):
+        x_test.append(test_data[i-2:i, 0])
+    
+    x_test = np.array(x_test)  
+    x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1)) 
+
+    predictions = model.predict(x_test)
+    predictions = scaler.inverse_transform(predictions)
+    rmse = np.sqrt(np.mean(predictions-y_test)**2)
+    print(rmse)
+
+    train = BMON_data[:training_data_length]
+    valid = BMON_data[:training_data_length-2]
+    valid['Predictions'] = predictions
+    plt.title('Model')
+    plt.xlabel('Days')
+    plt.ylabel('Price')
+    plt.plot(train['Price'] )
+    plt.plot(valid['Predictions'])
+    plt.legend(['Train', 'Predictions'], loc='upper right')
+    plt.show()
+    print(valid)
+    
+    
+    
+#def MachineLearningRNN(BMON_merge):
+    
+    
+    
+
+def main():
+    urls = ['https://api.coinmarketcap.com/data-api/v3/cryptocurrency/historical?id=10704&convertId=2790&timeStart=1650697874&timeEnd=1659337874',
+            'https://api.coinmarketcap.com/data-api/v3/cryptocurrency/historical?id=13425&convertId=2790&timeStart=1654128000&timeEnd=1659398400',
+            'https://api.coinmarketcap.com/data-api/v3/cryptocurrency/historical?id=11291&convertId=2790&timeStart=1650826314&timeEnd=1659466314',]
+    
+    for url in urls:
+        GetTokenDataFrame(url)
+      
+        
+main()        
