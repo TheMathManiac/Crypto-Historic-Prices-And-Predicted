@@ -13,6 +13,8 @@ from keras.layers import Dense, LSTM
 
 ####################################################################################################################################################################
 
+#Here we want to extract and clean the relevant data on the cryptocurrency (in this case BMON) which is then used for the machine learning model.
+
 def GetTokenDataFrame(url):
 
 
@@ -59,34 +61,24 @@ def GetTokenDataFrame(url):
     BMON_merge = pd.concat([BMON_time_data_frame, BMON_price_data_frame, BMON_volume_data_frame,BMON_marketcap_data_frame], axis=1, ignore_index=True)
     BMON_merge.columns =['Time', 'Price', 'Volume', 'MarketCap']
 
-    #print(BMON_merge)
     BMON_merge.to_csv('BMON_merge_data')
 
 
-    '''plt.plot(Time_list, Price_list)
+    plt.plot(Time_list, Price_list)
     plt.show()
     plt.plot(Volume_list)
     plt.plot(MarketCap_list)
     plt.xticks(np.arange(0, 100, step = 20))
     plt.xlabel('Time')
     plt.yticks([])
-    #plt.ylabel('BMON Token Price')
-    plt.show()'''
-
-    '''plt.plot(Time_list, Volume_list)
-    plt.xticks(np.arange(0, 100, step = 20))
-    plt.xlabel('Time')
-    plt.ylabel('BMON Volume')
+    plt.ylabel('BMON Token Price')
     plt.show()
-    
-    plt.plot(Time_list, MarketCap_list)
-    plt.xticks(np.arange(0, 100, step = 20))
-    plt.xlabel('Time')
-    plt.ylabel('BMON MarketCap')
-    plt.show()   '''
 
     MachineLearningLSTM(BMON_merge)
-    #MachineLearningRNN(BMON_merge)
+    
+###########################################################################################################################################################################  
+ 
+ #Here we use the LTSM (Long Short Term Memory) model to predict future BMON prices. The actual and predicted BMON pricesd are then displayed graphically.
 
 def MachineLearningLSTM(BMON_merge):
 
@@ -110,7 +102,6 @@ def MachineLearningLSTM(BMON_merge):
     for i in range(2, len(training_data)):
         x_train.append(training_data[i-2:i, 0])
         y_train.append(training_data[i, 0])
-
 
 
     x_train, y_train = np.array(x_train), np.array(y_train)
@@ -154,12 +145,9 @@ def MachineLearningLSTM(BMON_merge):
     plt.show()
     print(valid)
     
-    
-    
-#def MachineLearningRNN(BMON_merge):
-    
-    
-    
+###########################################################################################################################################################################  
+
+#Here we used the coinmarketcap APIs to gather real-time price information on specific cryptocurrencies.
 
 def main():
     urls = ['https://api.coinmarketcap.com/data-api/v3/cryptocurrency/historical?id=10704&convertId=2790&timeStart=1650697874&timeEnd=1659337874',
